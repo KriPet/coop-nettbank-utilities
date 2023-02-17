@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ESNext", /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     "module": "None", /* Specify what module code is generated. */
-    "outFile": "ssb-export.user.js",
+    "outFile": "coop-export.user.js",
     "removeComments": false,
     "strict": true, /* Enable all strict type-checking options. */
     "noImplicitAny": true, /* Enable error reporting for expressions and declarations with an implied `any` type.. */
