@@ -8,6 +8,11 @@
 // ==/UserScript==
 
 
+// Todo:
+// - Handle negative transactions
+// - Handle transactions in foreign currency
+
+
 type Account = {
     id: string
 }
@@ -64,7 +69,21 @@ class CoopUtilities {
             return;
         }
 
-        const { doc, transactionListElement } = this.createXmlDocument();
+        const xmlDoc = this.transactionsToXml(transactions);
+
+        const xmlText = new XMLSerializer().serializeToString(xmlDoc);
+
+        const blob = new Blob([xmlText], { type: "application/x-ofx" });
+
+        const link = document.createElement("a");
+        const dateString = new Date().toISOString().substring(0, 10);
+        link.download = `${dateString} Coop ${accountId}.ofx`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+    }
+
+    private static transactionsToXml(transactions: Transaction[]){
+        const { doc, transactionListElement } = this.createXmlDocumentRoot();
 
         for (const transaction of transactions) {
             const transactionElement = doc.createElement("STMTTRN");
@@ -77,18 +96,10 @@ class CoopUtilities {
             transactionListElement.appendChild(transactionElement);
         }
 
-        const xmlText = new XMLSerializer().serializeToString(doc);
-
-        const blob = new Blob([xmlText], { type: "application/x-ofx" });
-
-        const link = document.createElement("a");
-        const dateString = new Date().toISOString().substring(0, 10);
-        link.download = `${dateString} Coop ${accountId}.ofx`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
+        return doc
     }
 
-    private static createXmlDocument() {
+    private static createXmlDocumentRoot() {
         const doc = document.implementation.createDocument(null, "OFX", null);
         const OFX = doc.documentElement;
         const BANKMSGSRSV1 = OFX.appendChild(doc.createElement("BANKMSGSRSV1"));
