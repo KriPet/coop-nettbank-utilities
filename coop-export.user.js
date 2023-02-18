@@ -2,10 +2,11 @@
 // ==UserScript==
 // @name         Coop Kredittbanken transaction export
 // @namespace    http://bakemo.no/
-// @version      0.0.1
+// @version      0.0.2
 // @author       Peter Kristoffersen
 // @description  Press "-" to export the last month of transactions from all accounts
 // @match        https://kreditt.coop.no/minside/kort*
+// @downloadURL  https://github.com/KriPet/coop-nettbank-utilities/raw/main/coop-export.user.js
 // ==/UserScript==
 class CoopUtilities {
     static host = "https://kreditt.coop.no";
@@ -39,7 +40,17 @@ class CoopUtilities {
             console.info("No transactions found");
             return;
         }
-        const { doc, transactionListElement } = this.createXmlDocument();
+        const xmlDoc = this.transactionsToXml(transactions);
+        const xmlText = new XMLSerializer().serializeToString(xmlDoc);
+        const blob = new Blob([xmlText], { type: "application/x-ofx" });
+        const link = document.createElement("a");
+        const dateString = new Date().toISOString().substring(0, 10);
+        link.download = `${dateString} Coop ${accountId}.ofx`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+    }
+    static transactionsToXml(transactions) {
+        const { doc, transactionListElement } = this.createXmlDocumentRoot();
         for (const transaction of transactions) {
             const transactionElement = doc.createElement("STMTTRN");
             const dateElem = transactionElement.appendChild(doc.createElement("DTPOSTED"));
@@ -50,15 +61,9 @@ class CoopUtilities {
             amountElem.append(`-${transaction.transactionAmount.integer}.${transaction.transactionAmount.fraction}`);
             transactionListElement.appendChild(transactionElement);
         }
-        const xmlText = new XMLSerializer().serializeToString(doc);
-        const blob = new Blob([xmlText], { type: "application/x-ofx" });
-        const link = document.createElement("a");
-        const dateString = new Date().toISOString().substring(0, 10);
-        link.download = `${dateString} Coop ${accountId}.ofx`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
+        return doc;
     }
-    static createXmlDocument() {
+    static createXmlDocumentRoot() {
         const doc = document.implementation.createDocument(null, "OFX", null);
         const OFX = doc.documentElement;
         const BANKMSGSRSV1 = OFX.appendChild(doc.createElement("BANKMSGSRSV1"));
