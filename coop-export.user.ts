@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Coop Kredittbanken transaction export
 // @namespace    http://bakemo.no/
-// @version      0.0.2
+// @version      0.0.3
 // @author       Peter Kristoffersen
 // @description  Press "-" to export the last month of transactions from all accounts
 // @match        https://kreditt.coop.no/minside/kort*
@@ -9,16 +9,12 @@
 // ==/UserScript==
 
 
-// Todo:
-// - Handle negative transactions
-// - Handle transactions in foreign currency
-
-
 type Account = {
     id: string
 }
 
 type TransactionsResponse = {
+    links: {first:string, last:string}
     transactions: Transaction[]
 }
 
@@ -26,7 +22,7 @@ type Transaction  = {
     id: string // \d{7}-\d{9}
     transactionDate: string // yyyy-mm-dd
     description: string
-    transactionAmount: {
+    billedAmount: {
         integer: string
         fraction: string // \d{2}, including "00"
     }
@@ -38,11 +34,12 @@ class CoopUtilities {
     private static accountsUrl = new URL("/api/personal/banking/credit/accounts/", this.host);
     private static transactionsUrl = (accountId: string) => new URL(`/api/personal/banking/credit/accounts/${accountId}/transactions`, this.host);
 
-    private static fetch(url: URL) {
-        return fetch(url, {
+    private static async fetch(url: URL) {
+        const response = fetch(url, {
             "credentials": "include",
             "method": "GET"
         });
+        return response;
     }
 
     private static async getAccountIds(): Promise<string[]> {
@@ -57,6 +54,8 @@ class CoopUtilities {
     private static async getTransactions(accountId: string): Promise<Transaction[]> {
         console.debug(`Getting transactions for account ${accountId}`)
         const url = this.transactionsUrl(accountId);
+        const nextMonth = new Date((new Date()).getTime() + 30*1000*60*60*24);
+        url.searchParams.set("endDate", nextMonth.toISOString().slice(0,10));
         const response = await this.fetch(url);
         const responseJson : TransactionsResponse = await response.json();
         console.debug(responseJson)
@@ -93,7 +92,7 @@ class CoopUtilities {
             const nameElem = transactionElement.appendChild(doc.createElement("NAME"));
             nameElem.append(transaction.description);
             dateElem.append(transaction.transactionDate.replace(/-/g, ''));
-            amountElem.append(`-${transaction.transactionAmount.integer}.${transaction.transactionAmount.fraction}`);
+            amountElem.append(`${transaction.billedAmount.integer}.${transaction.billedAmount.fraction}`);
             transactionListElement.appendChild(transactionElement);
         }
 

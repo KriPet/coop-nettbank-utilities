@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Coop Kredittbanken transaction export
 // @namespace    http://bakemo.no/
-// @version      0.0.2
+// @version      0.0.3
 // @author       Peter Kristoffersen
 // @description  Press "-" to export the last month of transactions from all accounts
 // @match        https://kreditt.coop.no/minside/kort*
@@ -12,11 +12,12 @@ class CoopUtilities {
     static host = "https://kreditt.coop.no";
     static accountsUrl = new URL("/api/personal/banking/credit/accounts/", this.host);
     static transactionsUrl = (accountId) => new URL(`/api/personal/banking/credit/accounts/${accountId}/transactions`, this.host);
-    static fetch(url) {
-        return fetch(url, {
+    static async fetch(url) {
+        const response = fetch(url, {
             "credentials": "include",
             "method": "GET"
         });
+        return response;
     }
     static async getAccountIds() {
         console.debug("Getting accounts");
@@ -29,6 +30,8 @@ class CoopUtilities {
     static async getTransactions(accountId) {
         console.debug(`Getting transactions for account ${accountId}`);
         const url = this.transactionsUrl(accountId);
+        const nextMonth = new Date((new Date()).getTime() + 30 * 1000 * 60 * 60 * 24);
+        url.searchParams.set("endDate", nextMonth.toISOString().slice(0, 10));
         const response = await this.fetch(url);
         const responseJson = await response.json();
         console.debug(responseJson);
@@ -58,7 +61,7 @@ class CoopUtilities {
             const nameElem = transactionElement.appendChild(doc.createElement("NAME"));
             nameElem.append(transaction.description);
             dateElem.append(transaction.transactionDate.replace(/-/g, ''));
-            amountElem.append(`-${transaction.transactionAmount.integer}.${transaction.transactionAmount.fraction}`);
+            amountElem.append(`${transaction.billedAmount.integer}.${transaction.billedAmount.fraction}`);
             transactionListElement.appendChild(transactionElement);
         }
         return doc;
